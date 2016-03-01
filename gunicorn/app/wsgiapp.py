@@ -3,6 +3,10 @@
 # This file is part of gunicorn released under the MIT license.
 # See the NOTICE for more information.
 
+'''
+Linux安装Gunicorn之后，shell命令中调用的程序入库在这里
+'''
+
 import os
 import sys
 
@@ -49,6 +53,7 @@ class WSGIApplication(Application):
         self.chdir()
 
         # load the app
+        # wsgiapp 采用import的方式加载
         return util.import_app(self.app_uri)
 
     def load_pasteapp(self):

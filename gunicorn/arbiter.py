@@ -2,6 +2,10 @@
 #
 # This file is part of gunicorn released under the MIT license.
 # See the NOTICE for more information.
+'''
+进程控制 以及信号处理 run()是主要的程序入口
+'''
+
 from __future__ import print_function
 
 import errno
@@ -38,10 +42,11 @@ class Arbiter(object):
     START_CTX = {}
 
     LISTENERS = []
-    WORKERS = {}
+    WORKERS = {} #key pid  value  work对象
     PIPE = []
 
     # I love dynamic languages
+    # 可是不咋会用呀
     SIG_QUEUE = []
     SIGNALS = [getattr(signal, "SIG%s" % x)
                for x in "HUP QUIT INT TERM TTIN TTOU USR1 USR2 WINCH".split()]
@@ -49,6 +54,7 @@ class Arbiter(object):
         (getattr(signal, name), name[3:].lower()) for name in dir(signal)
         if name[:3] == "SIG" and name[3] != "_"
     )
+
 
     def __init__(self, app):
         os.environ["SERVER_SOFTWARE"] = SERVER_SOFTWARE
@@ -86,6 +92,7 @@ class Arbiter(object):
     num_workers = property(_get_num_workers, _set_num_workers)
 
     def setup(self, app):
+        #app对象调用Arbiter 产生进程
         self.app = app
         self.cfg = app.cfg
 
@@ -121,7 +128,7 @@ class Arbiter(object):
         """\
         Initialize the arbiter. Start listening and set pidfile if needed.
         """
-        self.log.info("Starting gunicorn %s", __version__)
+        self.log.info("Starting gunicorn test %s", __version__)
 
         self.pid = os.getpid()
         if self.cfg.pidfile is not None:
@@ -177,6 +184,7 @@ class Arbiter(object):
 
         try:
             self.manage_workers()
+            #master 的事件循环 接收不同指令 或者 检查worker的健康状态
             while True:
                 sig = self.SIG_QUEUE.pop(0) if len(self.SIG_QUEUE) else None
                 if sig is None:
@@ -543,6 +551,7 @@ class Arbiter(object):
         of the master process.
         """
 
+        #计算当前worker和need work的数量差，生成对应的数量的work进程
         for i in range(self.num_workers - len(self.WORKERS.keys())):
             self.spawn_worker()
             time.sleep(0.1 * random.random())

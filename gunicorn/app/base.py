@@ -32,6 +32,7 @@ class BaseApplication(object):
         Loads the configuration
         """
         try:
+            #先加载默认配置 然后加载自定义配置
             self.load_default_config()
             self.load_config()
         except Exception as e:
@@ -69,6 +70,7 @@ class BaseApplication(object):
 
     def run(self):
         try:
+            #核心函数 启动master进程
             Arbiter(self).run()
         except RuntimeError as e:
             print("\nError: %s\n" % e, file=sys.stderr)
@@ -135,9 +137,11 @@ class Application(BaseApplication):
         return self.load_config_from_module_name_or_filename(location=filename)
 
     def load_config(self):
+        #加载自定义的配置
         # parse console args
         parser = self.cfg.parser()
         args = parser.parse_args()
+        print("args:",args)
 
         # optional settings from apps
         cfg = self.init(parser, args, args.args)

@@ -347,6 +347,7 @@ def normalize_name(name):
 
 
 def import_app(module):
+    #加载wsgi app，主要的wsgi逻辑都在这里 默认的方法名是 application
     parts = module.split(":", 1)
     if len(parts) == 1:
         module, obj = module, "application"
@@ -354,6 +355,7 @@ def import_app(module):
         module, obj = parts[0], parts[1]
 
     try:
+        #动态加载一个模块 类似的可以做可配置的模块加载
         __import__(module)
     except ImportError:
         if module.endswith(".py") and os.path.exists(module):
