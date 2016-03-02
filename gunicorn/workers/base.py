@@ -98,6 +98,7 @@ class Worker(object):
             for k, v in self.cfg.env.items():
                 os.environ[k] = v
 
+        #设置进程的权限 用户和用户组
         util.set_owner_process(self.cfg.uid, self.cfg.gid)
 
         # Reseed the random number generator
@@ -115,10 +116,13 @@ class Worker(object):
 
         self.log.close_on_exec()
 
+        #初始化子进程的信号
         self.init_signals()
 
+        #
         self.cfg.post_worker_init(self)
 
+        #加载app的wsgi
         self.load_wsgi()
 
         # Enter main run loop

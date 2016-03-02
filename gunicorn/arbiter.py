@@ -161,6 +161,7 @@ class Arbiter(object):
             [os.close(p) for p in self.PIPE]
 
         # initialize the pipe
+        # os.pipe 返回 r w 两个文件描述符 PIPE[0] 是r  PIPE[1] w
         self.PIPE = pair = os.pipe()
         for p in pair:
             util.set_non_blocking(p)
@@ -173,6 +174,11 @@ class Arbiter(object):
         signal.signal(signal.SIGCHLD, self.handle_chld)
 
     def signal(self, sig, frame):
+        '''
+        所有的信号都有这个handler，当一个信号进来的时候首先会调用这个方法，把信号添加到
+        信号队列，写入一个字符到管道
+        '''
+        self.log.info("singal funcion get sig %s"%sig)
         if len(self.SIG_QUEUE) < 5:
             self.SIG_QUEUE.append(sig)
             self.wakeup()
@@ -186,9 +192,16 @@ class Arbiter(object):
             self.manage_workers()
             #master 的事件循环 接收不同指令 或者 检查worker的健康状态
             while True:
+                # 没有信号的时候 循环一直进行 不停的进行 None 分支的代码
+                # 判断信号队列有么有值就可以响应信号了，为什么还要用管道来唤醒进程呢？
+                # 猜测应该是减少while的循环频率，但是为了即时响应信号，用select + pipe的读写来即时获取到信号的到来
+                #self.log.info("master main loop, sigs: %s"%self.SIG_QUEUE)
                 sig = self.SIG_QUEUE.pop(0) if len(self.SIG_QUEUE) else None
                 if sig is None:
+                    #self.log.info("master sleep before")
+                    #信号读写在这里发生
                     self.sleep()
+                    #self.log.info("master sleep after")
                     self.murder_workers()
                     self.manage_workers()
                     continue
@@ -203,6 +216,7 @@ class Arbiter(object):
                     self.log.error("Unhandled signal: %s", signame)
                     continue
                 self.log.info("Handling signal: %s", signame)
+                #如果是一个可处理的信号
                 handler()
                 self.wakeup()
         except StopIteration:
@@ -242,11 +256,13 @@ class Arbiter(object):
 
     def handle_int(self):
         "SIGINT handling"
+        self.log.info("SIGINT signal accept")
         self.stop(False)
         raise StopIteration
 
     def handle_quit(self):
         "SIGQUIT handling"
+        #首先杀死work进程，然后才是master进程自杀
         self.stop(False)
         raise StopIteration
 
@@ -299,6 +315,7 @@ class Arbiter(object):
         Wake up the arbiter by writing to the PIPE
         """
         try:
+            self.log.info("master wakeup, write to pipe")
             os.write(self.PIPE[1], b'.')
         except IOError as e:
             if e.errno not in [errno.EAGAIN, errno.EINTR]:
@@ -321,9 +338,13 @@ class Arbiter(object):
         A readable PIPE means a signal occurred.
         """
         try:
-            ready = select.select([self.PIPE[0]], [], [], 1.0)
+            # 监听pipe 的r 句柄
+            ready = select.select([self.PIPE[0]], [], [], 5.0)
             if not ready[0]:
+                #不可读就返回
                 return
+
+            # 如果可读就把管道的数据读出来
             while os.read(self.PIPE[0], 1):
                 pass
         except select.error as e:

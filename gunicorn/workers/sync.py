@@ -54,6 +54,8 @@ class SyncWorker(base.Worker):
         return True
 
     def run_for_one(self, timeout):
+        #只有一个监听socket
+
         listener = self.sockets[0]
         while self.alive:
             self.notify()
@@ -63,6 +65,7 @@ class SyncWorker(base.Worker):
             # select which is where we'll wait for a bit for new
             # workers to come give us some love.
             try:
+                #接收并处理客户端的socket连接
                 self.accept(listener)
                 # Keep processing clients until no one is waiting. This
                 # prevents the need to select() for every client that we
@@ -74,6 +77,7 @@ class SyncWorker(base.Worker):
                         errno.EWOULDBLOCK):
                     raise
 
+            #保证父进程还活着
             if not self.is_parent_alive():
                 return
 
@@ -104,12 +108,15 @@ class SyncWorker(base.Worker):
                 return
 
     def run(self):
+        # 子程序初始化完成之后，这里就是主循环
+
         # if no timeout is given the worker will never wait and will
         # use the CPU for nothing. This minimal timeout prevent it.
         timeout = self.timeout or 0.5
 
         # self.socket appears to lose its blocking status after
         # we fork in the arbiter. Reset it here.
+        self.log.info("worker sockets: %s"%self.sockets)
         for s in self.sockets:
             s.setblocking(0)
 
@@ -119,12 +126,16 @@ class SyncWorker(base.Worker):
             self.run_for_one(timeout)
 
     def handle(self, listener, client, addr):
+        #主要处理http请求的地方
+
         req = None
         try:
             if self.cfg.is_ssl:
                 client = ssl.wrap_socket(client, server_side=True,
                     **self.cfg.ssl_options)
 
+            # 生成request对象
+            # 交给handle_request 处理
             parser = http.RequestParser(self.cfg, client)
             req = six.next(parser)
             self.handle_request(listener, req, client, addr)
@@ -158,17 +169,29 @@ class SyncWorker(base.Worker):
         try:
             self.cfg.pre_request(self, req)
             request_start = datetime.now()
+
+            self.log.info("%s %s %s %s"%(req, client, addr, listener.getsockname()))
+
+            #使用 http.wsgi.create 来组织request和response对象
             resp, environ = wsgi.create(req, client, addr,
                     listener.getsockname(), self.cfg)
+
+            #self.log.info("%s %s"%(resp, environ))
             # Force the connection closed until someone shows
             # a buffering proxy that supports Keep-Alive to
             # the backend.
             resp.force_close()
             self.nr += 1
+
+            #处理一定量的request之后会自动重启worker
             if self.nr >= self.max_requests:
                 self.log.info("Autorestarting worker after current request.")
                 self.alive = False
+
+            #wsgi 处理请求， 不同类型的mime分别响应
             respiter = self.wsgi(environ, resp.start_response)
+            self.log.info(respiter)
+
             try:
                 if isinstance(respiter, environ['wsgi.file_wrapper']):
                     resp.write_file(respiter)
@@ -176,7 +199,11 @@ class SyncWorker(base.Worker):
                     for item in respiter:
                         resp.write(item)
                 resp.close()
+
+                #计算出整个请求的花费时间
                 request_time = datetime.now() - request_start
+
+                #类似nginx 记录access log
                 self.log.access(resp, req, environ, request_time)
             finally:
                 if hasattr(respiter, "close"):
