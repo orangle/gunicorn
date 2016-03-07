@@ -24,9 +24,13 @@ class StopWaiting(Exception):
 class SyncWorker(base.Worker):
 
     def accept(self, listener):
+        #接收客户端的socket 数据
         client, addr = listener.accept()
+        #设置成阻塞模式
         client.setblocking(1)
+        #然后还要加锁
         util.close_on_exec(client)
+        #处理这个请求
         self.handle(listener, client, addr)
 
     def wait(self, timeout):

@@ -111,6 +111,7 @@ class Worker(object):
             util.close_on_exec(p)
 
         # Prevent fd inheritance
+        # 都是对文件描述符标识的操作
         [util.close_on_exec(s) for s in self.sockets]
         util.close_on_exec(self.tmp.fileno())
 

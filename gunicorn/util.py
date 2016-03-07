@@ -261,12 +261,18 @@ def get_maxfd():
 
 
 def close_on_exec(fd):
+    '''
+    为了让fd在子进程中执行 exec*() family 方法之后能自动关闭
+    '''
     flags = fcntl.fcntl(fd, fcntl.F_GETFD)
     flags |= fcntl.FD_CLOEXEC
     fcntl.fcntl(fd, fcntl.F_SETFD, flags)
 
 
 def set_non_blocking(fd):
+    '''
+    如果python没有给一个fd对象提供setblocking方法，那么也可以通过fcntl来设置
+    '''
     flags = fcntl.fcntl(fd, fcntl.F_GETFL) | os.O_NONBLOCK
     fcntl.fcntl(fd, fcntl.F_SETFL, flags)
 

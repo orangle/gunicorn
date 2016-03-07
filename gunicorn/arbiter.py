@@ -540,7 +540,9 @@ class Arbiter(object):
         try:
             util._setproctitle("worker [%s]" % self.proc_name)
             self.log.info("Booting worker with pid: %s", worker_pid)
+            #
             self.cfg.post_fork(self, worker)
+            #worker 的入库函数是 init_process()
             worker.init_process()
             sys.exit(0)
         except SystemExit:
