@@ -112,6 +112,15 @@ def proxy_environ(req):
 
 
 def create(req, sock, client, server, cfg):
+    '''
+    req: 请求socket
+    sock：client的socket
+    client：client的地址 端口
+    server： server 的ip地址 端口
+    cfg: 配置
+    '''
+
+    #response 对象
     resp = Response(req, sock, cfg)
 
     # set initial environ

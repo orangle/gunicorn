@@ -131,9 +131,13 @@ class SyncWorker(base.Worker):
 
     def handle(self, listener, client, addr):
         #主要处理http请求的地方
+        #listener 是server的fd
+        #client 是client的fd
+        #addr 是client的地址
 
         req = None
         try:
+            #处理ssl请求
             if self.cfg.is_ssl:
                 client = ssl.wrap_socket(client, server_side=True,
                     **self.cfg.ssl_options)
@@ -142,6 +146,8 @@ class SyncWorker(base.Worker):
             # 交给handle_request 处理
             parser = http.RequestParser(self.cfg, client)
             req = six.next(parser)
+
+
             self.handle_request(listener, req, client, addr)
         except http.errors.NoMoreData as e:
             self.log.debug("Ignored premature client disconnection. %s", e)
@@ -171,12 +177,15 @@ class SyncWorker(base.Worker):
         environ = {}
         resp = None
         try:
+            #server hooks
             self.cfg.pre_request(self, req)
             request_start = datetime.now()
 
+            #记录日志
             self.log.info("%s %s %s %s"%(req, client, addr, listener.getsockname()))
 
             #使用 http.wsgi.create 来组织request和response对象
+            #准备好wsgi需要的对象
             resp, environ = wsgi.create(req, client, addr,
                     listener.getsockname(), self.cfg)
 
@@ -193,6 +202,7 @@ class SyncWorker(base.Worker):
                 self.alive = False
 
             #wsgi 处理请求， 不同类型的mime分别响应
+            #base.py 中load_wsgi
             respiter = self.wsgi(environ, resp.start_response)
             self.log.info(respiter)
 

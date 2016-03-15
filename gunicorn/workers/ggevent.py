@@ -88,6 +88,9 @@ class GeventWorker(AsyncWorker):
         return gevent.Timeout(self.cfg.keepalive, False)
 
     def run(self):
+        '''
+        子进程fork出来时候的入口方法
+        '''
         servers = []
         ssl_args = {}
 
@@ -97,12 +100,16 @@ class GeventWorker(AsyncWorker):
         for s in self.sockets:
             s.setblocking(1)
             pool = Pool(self.worker_connections)
+
+            #如果有指定的wsgi处理class就直接使用
+            #没有就使用async的handler来处理
             if self.server_class is not None:
                 environ = base_environ(self.cfg)
                 environ.update({
                     "wsgi.multithread": True,
                     "SERVER_SOFTWARE": VERSION,
                 })
+                self.log.info("gevent server_class %s"%self.server_class)
                 server = self.server_class(
                     s, application=self.wsgi, spawn=pool, log=self.log,
                     handler_class=self.wsgi_handler, environ=environ,
@@ -115,6 +122,7 @@ class GeventWorker(AsyncWorker):
             servers.append(server)
 
         try:
+            #这里是子进程的main loop
             while self.alive:
                 self.notify()
                 gevent.sleep(1.0)

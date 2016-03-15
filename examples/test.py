@@ -21,7 +21,14 @@ def app(environ, start_response):
         ('Content-type', 'text/plain'),
         ('Content-Length', str(len(data))),
         ('X-Gunicorn-Version', __version__),
-        #("Test", "test тест"),
+        ("Test", "test тест"),
     ]
+
+    # import urllib2
+    # try:
+    #     urllib2.urlopen('http://code.orangleliu.info/', timeout=3)
+    # except:
+    #     pass
+
     start_response(status, response_headers)
     return iter([data])

@@ -141,7 +141,7 @@ class Application(BaseApplication):
         # parse console args
         parser = self.cfg.parser()
         args = parser.parse_args()
-        print("args:",args)
+        #print("args:",args)
 
         # optional settings from apps
         cfg = self.init(parser, args, args.args)
@@ -151,12 +151,15 @@ class Application(BaseApplication):
             for k, v in cfg.items():
                 self.cfg.set(k.lower(), v)
 
+        print("args.config", args.config)
         if args.config:
             self.load_config_from_file(args.config)
         else:
             default_config = get_default_config_file()
+            print("default_config", default_config)
             if default_config is not None:
                 self.load_config_from_file(default_config)
+
 
         # Lastly, update the configuration with any command line
         # settings.
@@ -165,7 +168,10 @@ class Application(BaseApplication):
                 continue
             if k == "args":
                 continue
+            print("config", k, v)
             self.cfg.set(k.lower(), v)
+
+        print("worker_class", self.cfg.worker_class)
 
     def run(self):
         if self.cfg.check_config:

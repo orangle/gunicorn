@@ -17,8 +17,10 @@ from gunicorn import six
 
 ALREADY_HANDLED = object()
 
-
 class AsyncWorker(base.Worker):
+    '''
+    异步worker的父类, 抽象出来一些公共方法
+    '''
 
     def __init__(self, *args, **kwargs):
         super(AsyncWorker, self).__init__(*args, **kwargs)

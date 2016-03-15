@@ -104,6 +104,8 @@ class Arbiter(object):
             self.log.reopen_files()
 
         self.worker_class = self.cfg.worker_class
+        self.log.info("worker_class is %s"%self.cfg.worker_class)
+
         self.address = self.cfg.address
         self.num_workers = self.cfg.workers
         self.timeout = self.cfg.timeout

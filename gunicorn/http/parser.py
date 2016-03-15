@@ -13,6 +13,8 @@ class Parser(object):
 
     def __init__(self, cfg, source):
         self.cfg = cfg
+
+        #socket和非socket对象处理
         if hasattr(source, "recv"):
             self.unreader = SocketUnreader(source)
         else:
